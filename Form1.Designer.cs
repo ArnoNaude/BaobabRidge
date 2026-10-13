@@ -159,6 +159,7 @@
             this.dgvAnimals.RowTemplate.Height = 28;
             this.dgvAnimals.Size = new System.Drawing.Size(615, 311);
             this.dgvAnimals.TabIndex = 11;
+            this.dgvAnimals.CellClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.dgvAnimals_CellClick);
             // 
             // lblSearch
             // 
@@ -195,6 +196,7 @@
             this.btnSaveChanges.TabIndex = 15;
             this.btnSaveChanges.Text = "Save Changes";
             this.btnSaveChanges.UseVisualStyleBackColor = true;
+            
             // 
             // btnClear
             // 
@@ -204,6 +206,7 @@
             this.btnClear.TabIndex = 16;
             this.btnClear.Text = "Clear";
             this.btnClear.UseVisualStyleBackColor = true;
+            this.btnClear.Click += new System.EventHandler(this.btnClear_Click);
             // 
             // Form1
             // 
