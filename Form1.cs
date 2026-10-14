@@ -176,7 +176,7 @@ namespace BaobabRidge
         {
             if (e.RowIndex < 0)
             {
-                return; // when coloum header is clicked and not the animal row //
+                return; // when coloum header is clicked and not the animal row 
             }
 
             // The animal object behind the row , empty new row has none so we check for null and cast to Animal
@@ -199,7 +199,7 @@ namespace BaobabRidge
                 return;
             }
 
-            // find the animal i the list with its ID , null if ther is no match
+            // find the animal in the list with its ID , null if there is no match
 
             Animal found = null;
             foreach (Animal a in _animals)
@@ -223,6 +223,76 @@ namespace BaobabRidge
 
 
         }
-        
+        // saves the edited animal , and rewrites animals.txt so only the animals line changes
+        private void btnSaveChanges_Click(object sender, EventArgs e)
+        {
+            if (_editingAnimalId == null)
+            {
+                MessageBox.Show("Select an animal to edit first.", "Nothing selected", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            // same validation as add 
+
+            if (!AnimalValidator.TryValidateName(txtName.Text, out string name, out string error))
+            { ShowValidationError(error, txtName); return; }
+
+            if (!AnimalValidator.TryValidateSpecies(txtSpecies.Text, out string species, out error))
+            { ShowValidationError(error, txtSpecies); return; }
+
+            if (!AnimalValidator.TryValidateAge(txtAge.Text, out int age, out error))
+            { ShowValidationError(error, txtAge); return; }
+
+            if (!AnimalValidator.TryValidateScore(txtRecoveryScore.Text, out int score, out error))
+            { ShowValidationError(error, txtRecoveryScore); return; }
+
+            // reload from the file so that the change is made to the latest version of the animal list and not an outdated one
+
+            if (!_repository.TryLoadAll(out List<Animal> animals, out _, out error))
+            {
+                MessageBox.Show(error, "File Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return; // doesnt write the file after a failed load to avoid overwriting the file with an empty list
+            }
+
+            // find the animal that is being edited in the loaded list 
+            Animal target = null;
+            foreach (Animal a in animals)
+            {
+                if (a.AnimalId == _editingAnimalId)
+                {
+                    target = a;
+                    break; // stop at first match  
+                }
+            }
+            // if the animal is not found in the file , it may have been deleted by another instance of the program or manually
+            if (target == null)
+            {
+                MessageBox.Show($"{_editingAnimalId} is no longer in animals.txt. It may have been deleted.", "Animal Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                LoadAnimals(showSkippedMessage: false); // refresh the grid with the latest data from the file
+                EnterAddMode();
+                return;
+            }
+
+            //Save the new values and work out the status and housing unit again
+
+            target.Name = name;
+            target.Species = species;
+            target.Age = age;
+            target.RecoveryScore = score;
+            target.ApplyClassification();
+
+            if (!_repository.TryRewriteAll(animals, out error))
+            {
+                MessageBox.Show(error, "File Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return; // stay in edit mode 
+            }
+
+            MessageBox.Show($"{target.Name} ({target.AnimalId}) was updated.\n\n Status: {target.Status}\nHousing Unit: {target.HousingUnit}",
+                "Animal Updated", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            LoadAnimals(showSkippedMessage: false);
+            EnterAddMode();
+        }
+
     }
 }
+
