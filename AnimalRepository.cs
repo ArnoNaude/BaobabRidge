@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace BaobabRidge
 {
@@ -18,7 +19,7 @@ namespace BaobabRidge
 
         private static readonly UTF8Encoding Utf8NoBom = new UTF8Encoding(false);
 
-        
+
         public bool TryLoadAll(out List<Animal> animals, out int skippedCount, out string error)
         {
             animals = new List<Animal>();
@@ -61,7 +62,7 @@ namespace BaobabRidge
             }
         }
 
-       
+
         public bool TryAppend(Animal animal, out string error)
         {
             error = "";
@@ -105,5 +106,64 @@ namespace BaobabRidge
             }
             return "An unexpected file error occurred.";
         }
+
+        // Rewrites animals.txt with the given list of animals. Writes a temp file first and then swaps it in place of the the original file to avoid data loss if an error occurs during writing
+        public bool TryRewriteAll(List<Animal> animals, out string error)
+        {
+            error = "";
+            string tempPath = FilePath + ".tmp";
+            try
+            {
+                // One line per animal
+                List<string> lines = animals.Select(a => a.ToFileLine()).ToList();
+
+                // wRite the complete new content to the temp file first
+                File.WriteAllLines(tempPath, lines, Utf8NoBom); // meaniNg encoded in UTF-8 without optional three-byte signartue
+
+                if (File.Exists(FilePath))
+                {
+                    //Swap the temp file in place of anmals.txt
+                    File.Replace(tempPath, FilePath, null);
+                }
+                else
+                {
+                    File.Move(tempPath, FilePath);
+                }
+                return true;
+
+            }
+            catch (IOException ex)
+            {
+                error = DescribeFileError(ex);
+                return false;
+            }
+            catch(UnauthorizedAccessException ex)
+            {
+                error = DescribeFileError(ex);
+                return false;
+            }
+            finally
+            {
+
+                // if anything fails before the swap , remove the leftover temp file
+                try
+                {
+                    if (File.Exists(tempPath))
+                    {
+                        File.Delete(tempPath);
+                    }
+                }
+                catch (IOException)
+                {
+
+                }
+                catch (UnauthorizedAccessException)
+                {
+
+                }
+            }
+        }
     }
 }
+
+

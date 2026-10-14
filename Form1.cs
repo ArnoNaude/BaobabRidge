@@ -126,5 +126,173 @@ namespace BaobabRidge
         {
             LoadAnimals(showSkippedMessage: true);
         }
+
+        // update feature 
+
+        //Id of the animal that is loaded in the form for editing , If Null form is in add mode
+        private string _editingAnimalId = null;
+
+        // Loads the animal into input boxes and switches form to edit mode 
+        //add is disabled and save changes is enabledd
+
+        private void EnterEditMode(Animal animal)
+        {
+            txtAnimalId.Text = animal.AnimalId;
+            txtName.Text = animal.Name;
+            txtSpecies.Text = animal.Species;
+            txtAge.Text = animal.Age.ToString();
+            txtRecoveryScore.Text = animal.RecoveryScore.ToString();
+            txtAnimalId.ReadOnly = true; // Animal ID should not be changed
+            btnAdd.Enabled = false;
+            btnSaveChanges.Enabled = true;
+            _editingAnimalId = animal.AnimalId;
+            txtName.Focus(); // Put cursor in name  
+
+        }
+
+        // enables add mode and disabbles save changes and clears bboxes 
+
+        private void EnterAddMode()
+        {
+
+            txtAnimalId.ReadOnly = false;
+            btnAdd.Enabled = true;
+            btnSaveChanges.Enabled = false;
+            _editingAnimalId = null;
+            txtSearch.Clear();
+            dgvAnimals.ClearSelection();
+            ClearInputs();
+        }
+        // cancels edit and goes back to addd mode 
+        private void btnClear_Click(object sender, EventArgs e)
+        {
+            EnterAddMode();
+
+        }
+
+        // loads clicked animal into the form for editing
+
+        private void dgvAnimals_CellClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex < 0)
+            {
+                return; // when coloum header is clicked and not the animal row 
+            }
+
+            // The animal object behind the row , empty new row has none so we check for null and cast to Animal
+            if (dgvAnimals.Rows[e.RowIndex].DataBoundItem is Animal animal)
+            {
+                EnterEditMode(animal);
+            }
+
+        }
+
+
+        //Finds an animal by exact ID and loads for editing if found, otherwise shows message box
+        private void btnSearch_Click(object sender, EventArgs e)
+        {
+            string searchId = txtSearch.Text.Trim().ToUpperInvariant(); // removes spaces and makes it so that its not case sensitive 
+            if (searchId.Length == 0)
+            {
+                MessageBox.Show("Please enter an Animal ID to search.", "Search Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtSearch.Focus();
+                return;
+            }
+
+            // find the animal in the list with its ID , null if there is no match
+
+            Animal found = null;
+            foreach (Animal a in _animals)
+            {
+                if (a.AnimalId == searchId)
+                {
+                    found = a;
+                    break; // ids are unique so stop at first match
+                }
+            }
+            if (found == null)
+            {
+                MessageBox.Show($"No animal with ID {searchId} was found. ", "Not Found", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+
+            }
+            else
+            {
+                EnterEditMode(found);
+            }
+
+
+        }
+        // saves the edited animal , and rewrites animals.txt so only the animals line changes
+        private void btnSaveChanges_Click(object sender, EventArgs e)
+        {
+            if (_editingAnimalId == null)
+            {
+                MessageBox.Show("Select an animal to edit first.", "Nothing selected", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            // same validation as add 
+
+            if (!AnimalValidator.TryValidateName(txtName.Text, out string name, out string error))
+            { ShowValidationError(error, txtName); return; }
+
+            if (!AnimalValidator.TryValidateSpecies(txtSpecies.Text, out string species, out error))
+            { ShowValidationError(error, txtSpecies); return; }
+
+            if (!AnimalValidator.TryValidateAge(txtAge.Text, out int age, out error))
+            { ShowValidationError(error, txtAge); return; }
+
+            if (!AnimalValidator.TryValidateScore(txtRecoveryScore.Text, out int score, out error))
+            { ShowValidationError(error, txtRecoveryScore); return; }
+
+            // reload from the file so that the change is made to the latest version of the animal list and not an outdated one
+
+            if (!_repository.TryLoadAll(out List<Animal> animals, out _, out error))
+            {
+                MessageBox.Show(error, "File Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return; // doesnt write the file after a failed load to avoid overwriting the file with an empty list
+            }
+
+            // find the animal that is being edited in the loaded list 
+            Animal target = null;
+            foreach (Animal a in animals)
+            {
+                if (a.AnimalId == _editingAnimalId)
+                {
+                    target = a;
+                    break; // stop at first match  
+                }
+            }
+            // if the animal is not found in the file , it may have been deleted by another instance of the program or manually
+            if (target == null)
+            {
+                MessageBox.Show($"{_editingAnimalId} is no longer in animals.txt. It may have been deleted.", "Animal Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                LoadAnimals(showSkippedMessage: false); // refresh the grid with the latest data from the file
+                EnterAddMode();
+                return;
+            }
+
+            //Save the new values and work out the status and housing unit again
+
+            target.Name = name;
+            target.Species = species;
+            target.Age = age;
+            target.RecoveryScore = score;
+            target.ApplyClassification();
+
+            if (!_repository.TryRewriteAll(animals, out error))
+            {
+                MessageBox.Show(error, "File Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return; // stay in edit mode 
+            }
+
+            MessageBox.Show($"{target.Name} ({target.AnimalId}) was updated.\n\n Status: {target.Status}\nHousing Unit: {target.HousingUnit}",
+                "Animal Updated", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            LoadAnimals(showSkippedMessage: false);
+            EnterAddMode();
+        }
+
     }
 }
+
