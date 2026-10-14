@@ -293,6 +293,75 @@ namespace BaobabRidge
             EnterAddMode();
         }
 
+        // delete feature 
+        // delete the selected animal after a confirmation and rewrites the animals.txt file without the deleted animal
+        private void btnDelete_Click(object sender, EventArgs e)
+        {
+            // nothing selected or empty row selected
+            if (dgvAnimals.SelectedCells.Count == 0 || dgvAnimals.CurrentRow == null || dgvAnimals.CurrentRow.IsNewRow)
+            {
+                MessageBox.Show("Please select an animal in the grid to delete.", "No Selection", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            // read the id and name from selected row
+            DataGridViewRow row = dgvAnimals.CurrentRow;
+            string deleteId = row.Cells[0].Value.ToString();
+            string deleteName = row.Cells[1].Value.ToString();
+
+            // confirmation dialog
+            DialogResult answer = MessageBox.Show($"Delete {deleteId} ({deleteName})? This cannot be undone.", "Confirm Delete", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+
+            if (answer != DialogResult.Yes)
+            {
+                return; // user cancelled
+            }
+
+            // reload from the file so that the change is made to the latest version of the animal list and not an outdated one
+
+            if (!_repository.TryLoadAll(out List<Animal> animals, out _, out string error))
+            {
+                MessageBox.Show(error, "File Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return; // doesnt write the file after a failed load to avoid overwriting the file with an empty list
+            }
+
+            // Find the animal to delete by ID
+
+            Animal target = null;
+            foreach (Animal a in animals)
+            {
+                if (a.AnimalId == deleteId)
+                {
+                    target = a;
+                    break; // stop at first match  
+                }
+            }
+
+            if (target == null)
+            {
+                MessageBox.Show($"{deleteId} is no longer in animals.txt. It may have been deleted.", "Animal Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                LoadAnimals(showSkippedMessage: false); // refresh the grid with the latest data from the file
+                EnterAddMode();
+                return;
+            }
+
+            animals.Remove(target); // remove the animal from the list
+
+
+            if (!_repository.TryRewriteAll(animals, out error))
+            {
+                MessageBox.Show(error, "File Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return; // file is unchanged, so the animal is still there
+            }
+
+            // regresh the from the file 
+            LoadAnimals(showSkippedMessage: false);
+
+            if (_editingAnimalId == deleteId)
+            {
+                EnterAddMode(); // if the deleted animal was being edited , go back to add mode
+
+            }
+        }
     }
 }
 
