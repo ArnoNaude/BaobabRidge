@@ -362,6 +362,70 @@ namespace BaobabRidge
 
             }
         }
+
+        // Feature 5: calculate totals from animals.txt, show them on the form, and save summary.txt
+        private void btnGenerateSummary_Click(object sender, EventArgs e)
+        {
+            if (!_repository.TryLoadAll(out List<Animal> animals, out _, out string error))
+            {
+                MessageBox.Show(error, "File Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            int total = animals.Count;
+            int ageSum = 0;
+            int scoreSum = 0;
+            int critical = 0;
+            int serious = 0;
+            int stable = 0;
+            int recovering = 0;
+            int releaseReady = 0;
+
+            foreach (Animal a in animals)
+            {
+                ageSum += a.Age;
+                scoreSum += a.RecoveryScore;
+
+                if (a.Status == "Critical") critical++;
+                else if (a.Status == "Serious") serious++;
+                else if (a.Status == "Stable") stable++;
+                else if (a.Status == "Recovering") recovering++;
+                else if (a.Status == "Release-Ready") releaseReady++;
+            }
+
+            // empty file: do not divide by zero
+            string avgAgeText = "N/A";
+            string avgScoreText = "N/A";
+            if (total > 0)
+            {
+                avgAgeText = ((double)ageSum / total).ToString("0.00");
+                avgScoreText = ((double)scoreSum / total).ToString("0.00");
+            }
+
+            txtTotalAnimals.Text = total.ToString();
+            txtAverageAge.Text = avgAgeText;
+            txtAverageScore.Text = avgScoreText;
+            txtCountCritical.Text = critical.ToString();
+            txtCountSerious.Text = serious.ToString();
+            txtCountStable.Text = stable.ToString();
+            txtCountRecovering.Text = recovering.ToString();
+            txtCountReleaseReady.Text = releaseReady.ToString();
+
+            string report =
+                "Total animals: " + total + Environment.NewLine +
+                "Average age: " + avgAgeText + Environment.NewLine +
+                "Average recovery score: " + avgScoreText + Environment.NewLine +
+                "Critical: " + critical + Environment.NewLine +
+                "Serious: " + serious + Environment.NewLine +
+                "Stable: " + stable + Environment.NewLine +
+                "Recovering: " + recovering + Environment.NewLine +
+                "Release-Ready: " + releaseReady + Environment.NewLine;
+
+            if (!_repository.TryWriteSummary(report, out error))
+            {
+                MessageBox.Show(error, "File Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
     }
 }
 
