@@ -163,6 +163,28 @@ namespace BaobabRidge
                 }
             }
         }
+
+        // Overwrites summary.txt with the generated report text
+        public bool TryWriteSummary(string contents, out string error)
+        {
+            error = "";
+            string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "summary.txt");
+            try
+            {
+                File.WriteAllText(path, contents, Utf8NoBom);
+                return true;
+            }
+            catch (IOException)
+            {
+                error = "summary.txt could not be saved. Close it if it is open in another program and try again.";
+                return false;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                error = "The program does not have permission to save summary.txt.";
+                return false;
+            }
+        }
     }
 }
 
